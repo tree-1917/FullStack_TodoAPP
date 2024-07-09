@@ -153,6 +153,7 @@ async def login(request: Request, db: Session = Depends(get_db)):
 @router.get("/logout")
 async def logout(request: Request):
     msg = "Logout Successful"
+    print(request)
     response = templates.TemplateResponse("login.html", {"request": request, "msg": msg})
     response.delete_cookie(key="access_token")
     return response
@@ -173,6 +174,7 @@ async def register_user(request: Request, email: str = Form(...), username: str 
 
     validation2 = db.query(models.Users).filter(models.Users.email == email).first()
 
+    print("Here")
     if password != password2 or validation1 is not None or validation2 is not None:
         msg = "Invalid registration request"
         return templates.TemplateResponse("register.html", {"request": request, "msg": msg})
@@ -186,7 +188,7 @@ async def register_user(request: Request, email: str = Form(...), username: str 
     hash_password = get_password_hash(password)
     user_model.hashed_password = hash_password
     user_model.is_active = True
-
+    print(user_model)
     db.add(user_model)
     db.commit()
 
