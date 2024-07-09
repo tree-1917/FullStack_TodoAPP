@@ -8,7 +8,7 @@ import models
 from database import engine, SessionLocal
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
-from .auth import get_current_user, get_user_exception
+from .auth import get_current_user
 
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -103,4 +103,18 @@ async def delete_todo(request: Request, todo_id : int, db: Session = Depends(get
     db.commit() 
     
     return RedirectResponse(url="/todos", status_code=status.HTTP_302_FOUND)
+
+
+@router.get("/complete/{todo_id}", response_class=HTMLResponse)
+async def complete_todo(request: Request , todo_id : int , db : Session = Depends(get_db)) : 
     
+    todo = db.query(models.Todos).filter(models.Todos.id == todo_id).first() 
+    
+    todo.complete = not todo.complete 
+    
+    db.add(todo)
+    
+    db.commit() 
+    
+    return RedirectResponse(url="/todos", status_code=status.HTTP_302_FOUND)
+
