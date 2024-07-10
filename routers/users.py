@@ -4,14 +4,11 @@ sys.path.append("..")
 from starlette.responses import RedirectResponse
 from fastapi import Depends, HTTPException, status, APIRouter, Request, Response, Form
 from pydantic import BaseModel, Field
-from typing import Optional
 import models
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 from database import SessionLocal, engine
-from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from datetime import datetime, timedelta
-from jose import jwt, JWTError
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from .auth import create_access_token, get_current_user
@@ -21,6 +18,8 @@ router = APIRouter(
     prefix="/user",
     tags=["user"]
 )
+models.Base.metadata.create_all(bind=engine) 
+
 templates = Jinja2Templates(directory="templates")
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -45,13 +44,19 @@ def get_db() :
 # UI
 @router.get("/password", response_class=HTMLResponse)
 async def test(request: Request): 
-    return templates.TemplateResponse("edit-passwd.html", {"request" : request})
+    user = await get_current_user(request)
+    if user is None : 
+        return RedirectResponse(url="/auth" ,status_code=status.HTTP_302_FOUND )
+    return templates.TemplateResponse("edit-passwd.html", {"request" : request, "user": user})
 # BK
-@router.post("/password",status_code=status.HTTP_204_NO_CONTENT)
-async def test(request:Request ,username:str = Form(...), password: str = Form(...), new_password : str= Form(...) ,User = Depends(get_current_user), db: Session = Depends(get_db)) : 
-    #TODO: Vaildate Current User 
+@router.post("/password",response_class=HTMLResponse)
+async def test(request:Request ,username:str = Form(...), password: str = Form(...), new_password : str= Form(...) , db: Session = Depends(get_db)) : 
+    #TODO: Vaildate Current User
+    User = await get_current_user(request)
+    if User is None : 
+        return RedirectResponse(url="/auth", status_code=status.HTTP_302_FOUND) 
     current_user = db.query(models.Users).filter(models.Users.id == User.get("id")).first() 
-    if current_user.username != username or not pwd_context.verify(password, current_user.hashed_password): 
+    if current_user.username != username : 
         msg = "Username or Password Error"
         return templates.TemplateResponse("edit-passwd.html", {"request" : request, "msg" : msg})
     # #TODO: Hashed User Password and update
